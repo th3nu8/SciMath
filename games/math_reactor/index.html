@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Math Reactor – SciMath</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #050a14; --card: #0d1b2a; --accent: #00d4ff; --accent2: #7b2fff;
+      --accent3: #00ff99; --danger: #ff4444; --text: #d0e8ff; --muted: #6a8ba8;
+      --radius: 12px;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg);
+           color: var(--text); min-height: 100vh; display: flex;
+           flex-direction: column; align-items: center; padding: 20px; }
+
+    .back { position: absolute; top: 16px; left: 16px; color: var(--accent);
+            text-decoration: none; font-size: 0.9rem; opacity: 0.8; }
+    .back:hover { opacity: 1; }
+
+    header { text-align: center; padding: 24px 0 20px; width: 100%; }
+    h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800;
+         background: linear-gradient(135deg, #ff6b35, var(--danger), var(--accent2));
+         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+         background-clip: text; }
+    .subtitle { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+
+    .game-area { max-width: 580px; width: 100%; }
+
+    /* HUD */
+    .hud { display: flex; justify-content: space-between; align-items: center;
+           padding: 12px 0; margin-bottom: 14px;
+           border-bottom: 1px solid rgba(0,212,255,0.15); }
+    .hud-item { text-align: center; }
+    .hud-label { font-size: 0.72rem; text-transform: uppercase;
+                 letter-spacing: 0.08em; color: var(--muted); }
+    .hud-value { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+
+    /* Reactor core */
+    .reactor-wrap { text-align: center; margin-bottom: 18px; }
+    .reactor-label { font-size: 0.75rem; text-transform: uppercase;
+                     letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+    .reactor-bar { height: 18px; background: rgba(255,68,68,0.12);
+                   border-radius: 9px; border: 1px solid rgba(255,68,68,0.3);
+                   overflow: hidden; }
+    .reactor-fill { height: 100%; border-radius: 9px; transition: width 0.3s, background 0.5s; }
+
+    /* Problem card */
+    .problem-card { background: var(--card); border: 1px solid rgba(0,212,255,0.18);
+                    border-radius: var(--radius); padding: 36px 24px;
+                    text-align: center; margin-bottom: 20px; position: relative;
+                    overflow: hidden; }
+    .problem-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, rgba(0,212,255,0.04), transparent 70%);
+    }
+    .op-badge { display: inline-block; padding: 3px 10px; border-radius: 20px;
+                font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+                letter-spacing: 0.1em; margin-bottom: 14px;
+                background: rgba(123,47,255,0.2); border: 1px solid rgba(123,47,255,0.4);
+                color: #a97fff; }
+    .problem-text { font-size: clamp(2rem, 8vw, 3.5rem); font-weight: 900;
+                    letter-spacing: -1px; color: var(--text); }
+    .problem-text span.op { color: var(--accent); }
+
+    /* Answer input */
+    .answer-row { display: flex; gap: 10px; margin-bottom: 16px; }
+    #answer-input { flex: 1; padding: 14px 18px; background: var(--card);
+                    border: 2px solid rgba(0,212,255,0.25); border-radius: 8px;
+                    color: var(--text); font-size: 1.4rem; font-weight: 700;
+                    text-align: center; outline: none; transition: border-color 0.2s; }
+    #answer-input:focus { border-color: var(--accent); }
+    #answer-input.shake { animation: shake 0.35s; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)}
+      40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+    }
+    #submit-btn { padding: 14px 24px; border-radius: 8px; cursor: pointer;
+                  border: none; font-size: 1.1rem; font-weight: 700;
+                  background: linear-gradient(135deg, var(--accent), var(--accent2));
+                  color: #050a14; transition: transform 0.1s, box-shadow 0.2s; }
+    #submit-btn:hover { transform: scale(1.04); box-shadow: 0 0 16px rgba(0,212,255,0.4); }
+    #submit-btn:active { transform: scale(0.97); }
+
+    /* Feedback */
+    #feedback { min-height: 26px; text-align: center; font-size: 0.95rem;
+                font-weight: 600; margin-bottom: 14px; }
+    #feedback.correct { color: var(--accent3); }
+    #feedback.wrong   { color: var(--danger); }
+
+    /* Difficulty pills */
+    .diff-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 18px; }
+    .diff-btn { padding: 6px 16px; border-radius: 20px; cursor: pointer;
+                border: 1px solid rgba(0,212,255,0.25); background: transparent;
+                color: var(--muted); font-size: 0.82rem; font-weight: 600;
+                transition: all 0.2s; }
+    .diff-btn.active, .diff-btn:hover {
+      border-color: var(--accent); color: var(--accent);
+      background: rgba(0,212,255,0.1);
+    }
+
+    /* Result */
+    #result-screen { display: none; text-align: center; padding: 40px 20px; }
+    #result-screen.active { display: block; }
+    .result-score { font-size: 3rem; font-weight: 900;
+                    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+                    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                    background-clip: text; }
+    .result-label { color: var(--muted); margin-top: 4px; }
+    .result-msg { font-size: 1.05rem; margin: 18px 0; line-height: 1.6; }
+    .btn { display: inline-block; padding: 12px 28px; border-radius: 8px;
+           background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,47,255,0.2));
+           border: 1px solid rgba(0,212,255,0.3); color: var(--accent);
+           font-size: 0.95rem; font-weight: 700; cursor: pointer;
+           text-decoration: none; margin: 6px; transition: box-shadow 0.2s; }
+    .btn:hover { box-shadow: 0 0 16px rgba(0,212,255,0.4); }
+
+    @media (max-width: 400px) {
+      .problem-text { font-size: 2.2rem; }
+      .answer-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+<a class="back" href="../../index.html">← Back to SciMath</a>
+
+<header>
+  <h1>⚛️ Math Reactor</h1>
+  <p class="subtitle">Solve equations fast — keep the reactor stable!</p>
+</header>
+
+<div class="game-area">
+
+  <!-- Difficulty -->
+  <div class="diff-row" id="diff-row">
+    <button class="diff-btn active" data-diff="easy">Easy</button>
+    <button class="diff-btn" data-diff="medium">Medium</button>
+    <button class="diff-btn" data-diff="hard">Hard</button>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-item"><div class="hud-label">Score</div><div class="hud-value" id="score-val">0</div></div>
+    <div class="hud-item"><div class="hud-label">Streak</div><div class="hud-value" id="streak-val">0🔥</div></div>
+    <div class="hud-item"><div class="hud-label">Time</div><div class="hud-value" id="timer-val">60</div></div>
+  </div>
+
+  <!-- Reactor heat bar -->
+  <div class="reactor-wrap">
+    <div class="reactor-label">⚠ Reactor Heat</div>
+    <div class="reactor-bar">
+      <div class="reactor-fill" id="reactor-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Game screen -->
+  <div id="game-screen">
+    <div class="problem-card">
+      <div class="op-badge" id="op-badge">Addition</div>
+      <div class="problem-text" id="problem-text">_ + _ = ?</div>
+    </div>
+
+    <div class="answer-row">
+      <input type="number" id="answer-input" placeholder="?" autocomplete="off" aria-label="Your answer" />
+      <button id="submit-btn" onclick="submitAnswer()">✓</button>
+    </div>
+    <div id="feedback"></div>
+  </div>
+
+  <!-- Result screen -->
+  <div id="result-screen">
+    <div class="result-score" id="final-score">0</div>
+    <div class="result-label">Points Scored</div>
+    <div class="result-msg" id="result-msg"></div>
+    <button class="btn" onclick="startGame()">▶ Play Again</button>
+    <a class="btn" href="../../index.html">← Game Deck</a>
+  </div>
+
+</div>
+
+<script>
+const CONFIGS = {
+  easy:   { range: [1, 10],  ops: ['+', '-'],         time: 60, baseScore: 10 },
+  medium: { range: [2, 20],  ops: ['+', '-', '×'],    time: 50, baseScore: 15 },
+  hard:   { range: [2, 30],  ops: ['+', '-', '×', '÷'], time: 40, baseScore: 20 },
+};
+
+let difficulty = 'easy';
+let score = 0, streak = 0, timeLeft = 0, timerInterval = null;
+let currentAnswer = 0, gameActive = false, heatLevel = 0;
+
+// Difficulty selector
+document.getElementById('diff-row').addEventListener('click', e => {
+  const btn = e.target.closest('[data-diff]');
+  if (!btn) return;
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  difficulty = btn.dataset.diff;
+});
+
+function rand(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateProblem() {
+  const cfg = CONFIGS[difficulty];
+  const [min, max] = cfg.range;
+  const op = cfg.ops[Math.floor(Math.random() * cfg.ops.length)];
+  let a, b, answer;
+
+  if (op === '+') {
+    a = rand(min, max); b = rand(min, max); answer = a + b;
+  } else if (op === '-') {
+    a = rand(min, max); b = rand(min, a); answer = a - b;
+  } else if (op === '×') {
+    a = rand(2, Math.min(max, 12)); b = rand(2, Math.min(max, 12)); answer = a * b;
+  } else { // ÷
+    b = rand(2, 10); answer = rand(2, 10); a = b * answer; // guaranteed integer
+  }
+
+  currentAnswer = answer;
+  const opNames = {'+':'Addition', '-':'Subtraction', '×':'Multiplication', '÷':'Division'};
+  document.getElementById('op-badge').textContent = opNames[op];
+  document.getElementById('problem-text').innerHTML =
+    `${a} <span class="op">${op}</span> ${b} <span class="op">=</span> ?`;
+  document.getElementById('answer-input').value = '';
+  document.getElementById('answer-input').focus();
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = '';
+}
+
+function submitAnswer() {
+  if (!gameActive) return;
+  const raw = document.getElementById('answer-input').value.trim();
+  if (raw === '') return;
+  const val = parseInt(raw, 10);
+  const fb = document.getElementById('feedback');
+
+  if (val === currentAnswer) {
+    streak++;
+    const bonus = streak >= 3 ? 2 : 1;
+    const points = CONFIGS[difficulty].baseScore * bonus;
+    score += points;
+    heatLevel = Math.max(0, heatLevel - 15);
+    fb.textContent = streak >= 3
+      ? `✔ Correct! +${points} (${streak}🔥 streak bonus!)`
+      : `✔ Correct! +${points}`;
+    fb.className = 'correct';
+    updateHUD();
+    setTimeout(generateProblem, 600);
+  } else {
+    streak = 0;
+    heatLevel = Math.min(100, heatLevel + 20);
+    const input = document.getElementById('answer-input');
+    input.classList.add('shake');
+    setTimeout(() => input.classList.remove('shake'), 400);
+    fb.textContent = `✘ Wrong! Answer was ${currentAnswer}`;
+    fb.className = 'wrong';
+    updateHUD();
+    if (heatLevel >= 100) {
+      endGame('meltdown');
+    } else {
+      setTimeout(generateProblem, 800);
+    }
+  }
+}
+
+function updateHUD() {
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('streak-val').textContent = streak + (streak >= 3 ? '🔥' : '');
+  document.getElementById('timer-val').textContent = timeLeft;
+  const fill = document.getElementById('reactor-fill');
+  fill.style.width = heatLevel + '%';
+  const hue = Math.floor(120 - heatLevel * 1.2); // green → red
+  fill.style.background = `hsl(${hue}, 90%, 50%)`;
+}
+
+function startGame() {
+  score = 0; streak = 0; heatLevel = 0;
+  gameActive = true;
+  timeLeft = CONFIGS[difficulty].time;
+
+  document.getElementById('result-screen').classList.remove('active');
+  document.getElementById('game-screen').style.display = '';
+
+  updateHUD();
+  generateProblem();
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    updateHUD();
+    if (timeLeft <= 0) endGame('timeout');
+  }, 1000);
+}
+
+function endGame(reason) {
+  clearInterval(timerInterval);
+  gameActive = false;
+  document.getElementById('game-screen').style.display = 'none';
+  const rs = document.getElementById('result-screen');
+  rs.classList.add('active');
+  document.getElementById('final-score').textContent = score;
+
+  const msgs = {
+    timeout: [
+      score >= 300 ? '🏆 Outstanding! You\'re a math reactor operator!' : '',
+      score >= 200 ? '🌟 Excellent run! The reactor held steady.' : '',
+      score >= 100 ? '👍 Solid performance! Keep sharpening those skills.' : '',
+      '📚 Keep practising — your reactor skills will grow!'
+    ].find(m => m) || '📚 Keep practising!',
+    meltdown: '☢️ MELTDOWN! Too many wrong answers — the reactor overheated. Try again!'
+  };
+  document.getElementById('result-msg').textContent = msgs[reason] || msgs.timeout;
+}
+
+// Allow Enter key to submit
+document.getElementById('answer-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+
+startGame();
+</script>
+</body>
+</html>

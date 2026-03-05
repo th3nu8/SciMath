@@ -1,0 +1,14 @@
+[
+  {
+    "id": "element_quiz",
+    "title": "Element Quiz",
+    "description": "Test your knowledge of the periodic table! Race against time to identify elements by their symbol, atomic number, or properties.",
+    "emoji": "⚗️"
+  },
+  {
+    "id": "math_reactor",
+    "title": "Math Reactor",
+    "description": "Solve rapid-fire arithmetic challenges to keep the reactor running. Addition, subtraction, multiplication, division — can you beat the meltdown?",
+    "emoji": "⚛️"
+  }
+]

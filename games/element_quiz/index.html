@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Element Quiz – SciMath</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #050a14; --card: #0d1b2a; --accent: #00d4ff; --accent2: #7b2fff;
+      --accent3: #00ff99; --text: #d0e8ff; --muted: #6a8ba8; --radius: 12px;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg);
+           color: var(--text); min-height: 100vh; display: flex;
+           flex-direction: column; align-items: center; padding: 20px; }
+
+    header { text-align: center; padding: 24px 0 20px; width: 100%; }
+    .back { position: absolute; top: 16px; left: 16px; color: var(--accent);
+            text-decoration: none; font-size: 0.9rem; opacity: 0.8; }
+    .back:hover { opacity: 1; }
+    h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800;
+         background: linear-gradient(135deg, var(--accent), var(--accent2));
+         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+         background-clip: text; }
+    .subtitle { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+
+    .game-area { max-width: 620px; width: 100%; }
+
+    /* HUD */
+    .hud { display: flex; justify-content: space-between; align-items: center;
+           padding: 12px 0; margin-bottom: 18px; border-bottom: 1px solid rgba(0,212,255,0.15); }
+    .hud-item { text-align: center; }
+    .hud-label { font-size: 0.72rem; text-transform: uppercase;
+                 letter-spacing: 0.08em; color: var(--muted); }
+    .hud-value { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    #timer-val.warning { color: #ff6b6b; animation: blink 0.5s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Progress bar */
+    .progress-bar { height: 4px; background: rgba(0,212,255,0.12);
+                    border-radius: 2px; margin-bottom: 24px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+                     border-radius: 2px; transition: width 0.4s; }
+
+    /* Element card */
+    .element-card { background: var(--card); border: 1px solid rgba(0,212,255,0.18);
+                    border-radius: var(--radius); padding: 32px 24px;
+                    text-align: center; margin-bottom: 24px;
+                    box-shadow: 0 0 40px rgba(0,212,255,0.06); }
+    .element-symbol { font-size: 5rem; font-weight: 900; letter-spacing: -2px;
+                      background: linear-gradient(135deg, var(--accent), var(--accent3));
+                      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                      background-clip: text; line-height: 1; }
+    .element-num { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+    .question-text { font-size: 1.05rem; color: var(--text); margin-top: 14px;
+                     line-height: 1.5; }
+
+    /* Choices */
+    .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .choice-btn {
+      padding: 14px 12px;
+      background: var(--card);
+      border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+      text-align: center;
+    }
+    .choice-btn:hover:not(:disabled) { background: #122236; border-color: var(--accent);
+                                        transform: scale(1.02); }
+    .choice-btn.correct  { background: rgba(0,255,153,0.15); border-color: var(--accent3); color: var(--accent3); }
+    .choice-btn.wrong    { background: rgba(255,60,60,0.15); border-color: #ff4444; color: #ff6b6b; }
+    .choice-btn:disabled { cursor: default; }
+
+    /* Feedback */
+    #feedback { min-height: 28px; text-align: center; font-size: 1rem;
+                font-weight: 600; margin-bottom: 16px; }
+    #feedback.correct { color: var(--accent3); }
+    #feedback.wrong   { color: #ff6b6b; }
+
+    /* Result screen */
+    #result-screen { display: none; text-align: center; padding: 40px 20px; }
+    #result-screen.active { display: block; }
+    .result-score { font-size: 3.5rem; font-weight: 900;
+                    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+                    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+                    background-clip: text; }
+    .result-label { color: var(--muted); margin-top: 6px; }
+    .result-msg { font-size: 1.1rem; margin: 20px 0; line-height: 1.6; }
+    .btn { display: inline-block; padding: 12px 28px; border-radius: 8px;
+           background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,47,255,0.2));
+           border: 1px solid rgba(0,212,255,0.3); color: var(--accent);
+           font-size: 0.95rem; font-weight: 700; cursor: pointer;
+           text-decoration: none; margin: 6px; transition: box-shadow 0.2s; }
+    .btn:hover { box-shadow: 0 0 16px rgba(0,212,255,0.4); }
+
+    @media (max-width: 420px) {
+      .choices { grid-template-columns: 1fr; }
+      .element-symbol { font-size: 4rem; }
+    }
+  </style>
+</head>
+<body>
+<a class="back" href="../../index.html">← Back to SciMath</a>
+
+<header>
+  <h1>⚗️ Element Quiz</h1>
+  <p class="subtitle">How well do you know the Periodic Table?</p>
+</header>
+
+<div class="game-area">
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-item">
+      <div class="hud-label">Score</div>
+      <div class="hud-value" id="score-val">0</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">Question</div>
+      <div class="hud-value" id="q-val">1 / 10</div>
+    </div>
+    <div class="hud-item">
+      <div class="hud-label">Time</div>
+      <div class="hud-value" id="timer-val">15</div>
+    </div>
+  </div>
+
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill" style="width:10%"></div>
+  </div>
+
+  <!-- Quiz screen -->
+  <div id="quiz-screen">
+    <div class="element-card">
+      <div class="element-symbol" id="el-symbol">H</div>
+      <div class="element-num" id="el-num">Atomic #1</div>
+      <div class="question-text" id="q-text">What is the name of this element?</div>
+    </div>
+
+    <div class="choices" id="choices"></div>
+    <div id="feedback"></div>
+  </div>
+
+  <!-- Result screen -->
+  <div id="result-screen">
+    <div class="result-score" id="final-score">0/10</div>
+    <div class="result-label">Final Score</div>
+    <div class="result-msg" id="result-msg"></div>
+    <button class="btn" onclick="startGame()">▶ Play Again</button>
+    <a class="btn" href="../../index.html">← Game Deck</a>
+  </div>
+</div>
+
+<script>
+const ELEMENTS = [
+  {symbol:'H',  num:1,  name:'Hydrogen',   group:'Nonmetal'},
+  {symbol:'He', num:2,  name:'Helium',      group:'Noble Gas'},
+  {symbol:'Li', num:3,  name:'Lithium',     group:'Alkali Metal'},
+  {symbol:'Be', num:4,  name:'Beryllium',   group:'Alkaline Earth'},
+  {symbol:'B',  num:5,  name:'Boron',       group:'Metalloid'},
+  {symbol:'C',  num:6,  name:'Carbon',      group:'Nonmetal'},
+  {symbol:'N',  num:7,  name:'Nitrogen',    group:'Nonmetal'},
+  {symbol:'O',  num:8,  name:'Oxygen',      group:'Nonmetal'},
+  {symbol:'F',  num:9,  name:'Fluorine',    group:'Halogen'},
+  {symbol:'Ne', num:10, name:'Neon',        group:'Noble Gas'},
+  {symbol:'Na', num:11, name:'Sodium',      group:'Alkali Metal'},
+  {symbol:'Mg', num:12, name:'Magnesium',   group:'Alkaline Earth'},
+  {symbol:'Al', num:13, name:'Aluminium',   group:'Post-Transition'},
+  {symbol:'Si', num:14, name:'Silicon',     group:'Metalloid'},
+  {symbol:'P',  num:15, name:'Phosphorus',  group:'Nonmetal'},
+  {symbol:'S',  num:16, name:'Sulfur',      group:'Nonmetal'},
+  {symbol:'Cl', num:17, name:'Chlorine',    group:'Halogen'},
+  {symbol:'Ar', num:18, name:'Argon',       group:'Noble Gas'},
+  {symbol:'K',  num:19, name:'Potassium',   group:'Alkali Metal'},
+  {symbol:'Ca', num:20, name:'Calcium',     group:'Alkaline Earth'},
+  {symbol:'Fe', num:26, name:'Iron',        group:'Transition Metal'},
+  {symbol:'Cu', num:29, name:'Copper',      group:'Transition Metal'},
+  {symbol:'Zn', num:30, name:'Zinc',        group:'Transition Metal'},
+  {symbol:'Ag', num:47, name:'Silver',      group:'Transition Metal'},
+  {symbol:'Au', num:79, name:'Gold',        group:'Transition Metal'},
+  {symbol:'Hg', num:80, name:'Mercury',     group:'Transition Metal'},
+  {symbol:'Pb', num:82, name:'Lead',        group:'Post-Transition'},
+  {symbol:'U',  num:92, name:'Uranium',     group:'Actinide'},
+];
+
+const QUESTION_TYPES = ['name', 'symbol', 'group'];
+const TOTAL = 10;
+const TIME_LIMIT = 15;
+
+let score = 0, qIndex = 0, timer = null, timeLeft = 0;
+let questions = [];
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildQuestions() {
+  const pool = shuffle(ELEMENTS).slice(0, TOTAL);
+  return pool.map(el => {
+    const type = QUESTION_TYPES[Math.floor(Math.random() * QUESTION_TYPES.length)];
+    let questionText, correctAnswer, wrongPool, answerKey;
+
+    if (type === 'name') {
+      questionText = 'What is the name of this element?';
+      correctAnswer = el.name;
+      answerKey = 'name';
+    } else if (type === 'symbol') {
+      questionText = 'What is the chemical symbol of this element?';
+      correctAnswer = el.symbol;
+      answerKey = 'symbol';
+    } else {
+      questionText = 'Which group does this element belong to?';
+      correctAnswer = el.group;
+      answerKey = 'group';
+    }
+
+    // Get 3 wrong answers from other elements
+    const others = shuffle(ELEMENTS.filter(e => e !== el));
+    const wrongs = [];
+    for (const o of others) {
+      const v = o[answerKey];
+      if (v !== correctAnswer && !wrongs.includes(v)) {
+        wrongs.push(v);
+        if (wrongs.length === 3) break;
+      }
+    }
+    const choices = shuffle([correctAnswer, ...wrongs]);
+    return { el, questionText, correctAnswer, choices };
+  });
+}
+
+function startGame() {
+  score = 0; qIndex = 0;
+  questions = buildQuestions();
+  document.getElementById('result-screen').classList.remove('active');
+  document.getElementById('quiz-screen').style.display = '';
+  showQuestion();
+}
+
+function showQuestion() {
+  const q = questions[qIndex];
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('q-val').textContent = `${qIndex + 1} / ${TOTAL}`;
+  document.getElementById('progress-fill').style.width = `${((qIndex + 1) / TOTAL) * 100}%`;
+  document.getElementById('el-symbol').textContent = q.el.symbol;
+  document.getElementById('el-num').textContent = `Atomic #${q.el.num}`;
+  document.getElementById('q-text').textContent = q.questionText;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = '';
+
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  for (const c of q.choices) {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = c;
+    btn.addEventListener('click', () => handleAnswer(btn, c, q.correctAnswer));
+    choicesEl.appendChild(btn);
+  }
+
+  startTimer();
+}
+
+function startTimer() {
+  clearInterval(timer);
+  timeLeft = TIME_LIMIT;
+  updateTimerDisplay();
+  timer = setInterval(() => {
+    timeLeft--;
+    updateTimerDisplay();
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      handleAnswer(null, null, questions[qIndex].correctAnswer);
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer-val');
+  el.textContent = timeLeft;
+  el.className = timeLeft <= 5 ? 'hud-value warning' : 'hud-value';
+}
+
+function handleAnswer(btn, chosen, correct) {
+  clearInterval(timer);
+  disableChoices();
+
+  const fb = document.getElementById('feedback');
+  if (chosen === correct) {
+    score++;
+    fb.textContent = '✔ Correct!';
+    fb.className = 'correct';
+    if (btn) btn.classList.add('correct');
+  } else {
+    fb.textContent = chosen === null
+      ? `⏱ Time's up! The answer was: ${correct}`
+      : `✘ Wrong! The answer was: ${correct}`;
+    fb.className = 'wrong';
+    if (btn) btn.classList.add('wrong');
+    // Highlight correct
+    document.querySelectorAll('.choice-btn').forEach(b => {
+      if (b.textContent === correct) b.classList.add('correct');
+    });
+  }
+
+  setTimeout(() => {
+    qIndex++;
+    if (qIndex < TOTAL) { showQuestion(); }
+    else { showResult(); }
+  }, 1400);
+}
+
+function disableChoices() {
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+}
+
+function showResult() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  const rs = document.getElementById('result-screen');
+  rs.classList.add('active');
+  document.getElementById('final-score').textContent = `${score}/${TOTAL}`;
+  const pct = score / TOTAL;
+  let msg;
+  if (pct === 1)       msg = '🏆 Perfect score! You are a chemistry master!';
+  else if (pct >= 0.8) msg = '🌟 Excellent! You really know your elements.';
+  else if (pct >= 0.6) msg = '👍 Good effort! Keep studying the periodic table.';
+  else if (pct >= 0.4) msg = '📚 Not bad, but there\'s room to improve. Try again!';
+  else                 msg = '🔬 Keep practising — the elements await your mastery!';
+  document.getElementById('result-msg').textContent = msg;
+  document.getElementById('score-val').textContent = score;
+  document.getElementById('progress-fill').style.width = '100%';
+}
+
+startGame();
+</script>
+</body>
+</html>
